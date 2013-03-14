@@ -23,13 +23,16 @@ var Certificate = function () {
     "use strict";
     this.cert = {internal:{master:{}, conn:{}, web:{}}, external:{}};
     keystore.call(this);
-    var logger = dependency.global.require (dependency.global.util.location, "lib/logging.js") (__filename);
-    var self = this, certificateType = Object.freeze({ "SERVER": 0, "CLIENT": 1}), certificateManager;
-    try {
-        certificateManager = require ("certificate_manager");
-    } catch (err) {
-        logger.error("certificate manager is missing, please run npm install or node-gyp rebuild");
-        process.exit();
+    var logger = dependency.global.require(dependency.global.util.location, "lib/logging.js") (__filename);
+    var self = this, certificateType = Object.freeze({ "SERVER": 0, "CLIENT": 1});
+
+    function getCertificateManager(callback) {
+        try {
+            var certificateManager = require ("certificate_manager");
+            callback(true, certificateManager);
+        } catch (err) {
+            callback(false, {"Component": "CertificateManager","Type": "MODULE_MISSING", "Error": err, "Message": "CertificateManager is Missing"});
+        }
     }
 
     function getCertType(type) {
@@ -59,125 +62,153 @@ var Certificate = function () {
     }
 
     this.generateSelfSignedCertificate = function (type, cn, callback) {
-        var obj = {}, key_id = getKeyId(type), cert_type = getCertType(type);
-
-        if (type === "PzhCA") {
-            self.cert.internal.signedCert = {};
-            self.cert.internal.revokedCert = {};
-        } else if (type === "PzpCA") {
-            self.cert.internal.pzh = {}
-        }
-        cn = encodeURIComponent (cn);
-        if (cn.length > 40) {
-            cn = cn.substring (0, 40);
-        }
-
-        self.generateKey (type, key_id, function (status, privateKey) {
-            if (!status) {
-                logger.error ("failed generating key " + privateKey);
-                return callback (false, privateKey);
-            } else {
-                logger.log (type + " created private key (certificate generation I step)");
-                try {
-                    obj.csr = certificateManager.createCertificateRequest (privateKey,
-                        encodeURIComponent (self.userData.country),
-                        encodeURIComponent (self.userData.state), // state
-                        encodeURIComponent (self.userData.city), //city
-                        encodeURIComponent (self.userData.orgname), //orgname
-                        encodeURIComponent (self.userData.orgunit), //orgunit
-                        cn,
-                        encodeURIComponent (self.userData.email));
-                } catch (err) {
-                    logger.error ("failed generating csr " + err);
-                    return callback (false, err);
-                }
-
-                try {
-                    logger.log (type + " generated CSR (certificate generation II step)");
-                    var server = self.metaData.serverName;
-                    if (require ("net").isIP (server)) {
-                        server = "IP:" + self.metaData.serverName;
-                    } else {
-                        server = "DNS:" + self.metaData.serverName;
-                    }
-                    obj.cert = certificateManager.selfSignRequest (obj.csr, 3600, privateKey, cert_type, server);
-                } catch (e1) {
-                    logger.error ("failed generating signed certificate " + e1);
-                    return callback (false, e1);
-                }
-                try {
-                    logger.log (type + " generated self signed certificate (certificate generation III step)");
-                    obj.crl = certificateManager.createEmptyCRL (privateKey, obj.cert, 3600, 0);
-                } catch (e2) {
-                    logger.error ("failed generating crl " + e2);
-                    return callback (false, e2);
-                }
-
-                logger.log (type + " generated crl (certificate generation IV step)");
-                if (type === "PzhPCA" || type === "PzhCA" || type === "PzpCA") {
-                    self.cert.internal.master.cert = obj.cert;
-                    self.crl.value = obj.crl;
-                    if (type === "PzpCA") { self.cert.internal.master.csr = obj.csr;} // We need to get it signed by PZH later
-                    return callback(true);
-                } else if (type === "PzhP" || type === "Pzh" || type === "Pzp") {
-                    self.cert.internal.conn.cert = obj.cert;
-                    if (type === "Pzp") { self.cert.internal.conn.csr = obj.csr; }
-                    return callback (true, obj.csr);
-                }  else if (type === "PzhWS" || type === "PzhSSL") {
-                    return callback (true, obj.csr);
-                }
+        try {
+            var obj = {}, key_id = getKeyId(type), cert_type = getCertType(type);
+            if (type === "PzhCA") {
+                self.cert.internal.signedCert = {};
+                self.cert.internal.revokedCert = {};
+            } else if (type === "PzpCA") {
+                self.cert.internal.pzh = {}
             }
-        });
+            cn = encodeURIComponent (cn);
+            if (cn.length > 40) {
+                cn = cn.substring (0, 40);
+            }
+            getCertificateManager(function(status, certificateManager) {
+                if (status) {
+                    self.generateKey(type, key_id, function (status, privateKey) {
+                        if (!status) {
+                            return callback (false, privateKey); // This has already error set by keyStore
+                        } else {
+                            logger.log (type + " created private key (certificate generation I step)");
+                            try {
+                                obj.csr = certificateManager.createCertificateRequest (privateKey,
+                                    encodeURIComponent (self.userData.country),
+                                    encodeURIComponent (self.userData.state), // state
+                                    encodeURIComponent (self.userData.city), //city
+                                    encodeURIComponent (self.userData.orgname), //orgname
+                                    encodeURIComponent (self.userData.orgunit), //orgunit
+                                    cn,
+                                    encodeURIComponent (self.userData.email));
+                            } catch (err) {
+                                callback (false, {"Component": "CertificateManager","Type": "FUNC_ERROR", "Error": err,
+                                    "Message": "failed generating CSR. user details are missing"});
+                                return;
+                            }
+
+                            try {
+                                logger.log (type + " generated CSR (certificate generation II step)");
+                                var server = self.metaData.serverName;
+                                if (require("net").isIP(server)) {
+                                    server = "IP:" + self.metaData.serverName;
+                                } else {
+                                    server = "DNS:" + self.metaData.serverName;
+                                }
+                                obj.cert = certificateManager.selfSignRequest (obj.csr, 3600, privateKey, cert_type, server);
+                            } catch (e1) {
+                                return callback (false, {"Component": "CertificateManager","Type": "FUNC_ERROR", "Error": e1,
+                                    "Message": "failed self signing certificate"});
+                            }
+                            try {
+                                logger.log (type + " generated self signed certificate (certificate generation III step)");
+                                obj.crl = certificateManager.createEmptyCRL (privateKey, obj.cert, 3600, 0);
+                            } catch (e2) {
+                                return callback (false, {"Component": "CertificateManager","Type": "FUNC_ERROR", "Error": e2,
+                                    "Message": "failed generating crl"});
+                            }
+
+                            logger.log (type + " generated crl (certificate generation IV step)");
+                            if (type === "PzhPCA" || type === "PzhCA" || type === "PzpCA") {
+                                self.cert.internal.master.cert = obj.cert;
+                                self.crl.value = obj.crl;
+                                if (type === "PzpCA") { self.cert.internal.master.csr = obj.csr;} // We need to get it signed by PZH later
+                                return callback(true);
+                            } else if (type === "PzhP" || type === "Pzh" || type === "Pzp") {
+                                self.cert.internal.conn.cert = obj.cert;
+                                if (type === "Pzp") { self.cert.internal.conn.csr = obj.csr; }
+                                return callback (true, obj.csr);
+                            }  else if (type === "PzhWS" || type === "PzhSSL") {
+                                return callback (true, obj.csr);
+                            }
+                        }
+                    });
+                } else {
+                    callback(false, certificateManager);// This is error from getCertificateManager call
+                }
+            });
+        } catch (err) {
+            callback(false, {"Component": "CertificateManager","Type": "EXCEPTION", "Error": err,
+                             "Message": "certificate parameters are missing"});
+        }
     };
 
-    this.getKeyHash = function(path, callback){
+    this.getKeyHash = function(certPath, callback){
         try {
-            var hash = certificateManager.getHash(path);
-            logger.log("Key Hash is" + hash);
-            return callback(true, hash);
+            getCertificateManager(function(status, certificateManager){
+                if (status) {
+                    var hash = certificateManager.getHash(certPath);
+                    logger.log("Key Hash is" + hash);
+                    callback(true, hash);
+                } else {
+                    callback(false, certificateManager); // This is error from getCertificateManager cal
+                }
+            });
         } catch (err) {
-            logger.log("get certificate manager error" + err);
-            return callback(false, err);
+            callback(false, {"Component": "CertificateManager","Type": "EXCEPTION", "Error": err,
+                "Message": "getKeyHash failed"});
         }
     };
 
     this.generateSignedCertificate = function (csr, callback) {
         try {
-            self.fetchKey (self.cert.internal.master.key_id, function (status, privateKey) {
+            getCertificateManager(function(status, certificateManager){
                 if (status) {
-                    var server,  clientCert;
-                    if (require ("net").isIP (self.metaData.serverName)) {
-                        server = "IP:" + self.metaData.serverName;
-                    } else {
-                        server = "DNS:" + self.metaData.serverName;
-                    }
-                    clientCert = certificateManager.signRequest (csr, 3600, privateKey, self.cert.internal.master.cert, certificateType.CLIENT, server);
-                    logger.log ("signed certificate by the PZP/PZH");
-                    return callback (true, clientCert);
+                    self.fetchKey (self.cert.internal.master.key_id, function (status, privateKey) {
+                        if (status) {
+                            var server,  clientCert;
+                            if (require ("net").isIP (self.metaData.serverName)) {
+                                server = "IP:" + self.metaData.serverName;
+                            } else {
+                                server = "DNS:" + self.metaData.serverName;
+                            }
+                            clientCert = certificateManager.signRequest (csr, 3600, privateKey, self.cert.internal.master.cert, certificateType.CLIENT, server);
+                            logger.log ("signed certificate by the PZP/PZH");
+                            callback (true, clientCert);
+                        } else {
+                            callback (false, privateKey); // It is not privateKey but just variable name
+                        }
+                    });
                 } else {
-                    return callback (false, privateKey); // It is not privateKey but just variable name
+                    callback (false, certificateManager);// Value is set by getCertificateManager call
                 }
             });
-        } catch (err1) {
-            return callback (false, err1);
+        } catch (err) {
+            callback (false, {"Component": "CertificateManager","Type": "EXCEPTION", "Error": err,
+                "Message": "certificate signing error"});
         }
     };
 
     this.revokeClientCert = function (pzpCert, callback) {
         try {
-            self.fetchKey (self.cert.internal.master.key_id, function (status, value) {
-                if (status) {
-                    var crl = certificateManager.addToCRL ("" + value, "" + self.crl, "" + pzpCert);
-                    // master.key.value, master.cert.value
-                    logger.log("revoked certificate");
-                    return callback (true, crl);
+            getCertificateManager(function(status, certificateManager){
+                if(status) {
+                    self.fetchKey (self.cert.internal.master.key_id, function (status, value) {
+                        if (status) {
+                            var crl = certificateManager.addToCRL ("" + value, "" + self.crl, "" + pzpCert);
+                            // master.key.value, master.cert.value
+                            logger.log("revoked certificate");
+                             callback (true, crl);
+                        } else {
+                            callback (false, value)
+                        }
+                    });
                 } else {
-                    return callback (status, value)
+                    callback (false, certificateManager);// Value is set by getCertificateManager call
                 }
             });
-        } catch (err1) {
-            return callback (false, err1);
-
+        } catch (err) {
+            return callback (false, {"Component": "CertificateManager","Type": "EXCEPTION", "Error": err,
+                "Message": "certificate revoke error"});
         }
     };
 };
