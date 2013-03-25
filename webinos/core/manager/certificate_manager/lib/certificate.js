@@ -16,13 +16,14 @@
  * Author: Habib Virji (habib.virji@samsung.com)
  *         Ziran Sun (ziran.sun@samsung.com)
  *******************************************************************************/
-var Certificate = function(webinosType, webinosRoot,  webinosName, serverName_) {
+var Certificate = function(webinosType, webinosRoot,  webinosName, serverName_, userData) {
     "use strict";    
     var dependency = require ("find-dependencies") (__dirname);
     var KeyStore = dependency.global.require (dependency.global.manager.keystore.location);
     var logger = dependency.global.require(dependency.global.util.location, "lib/logging.js") (__filename);
     var CertContext = this, certificateType = Object.freeze({ "SERVER": 0, "CLIENT": 1}), certificateManager;
     CertContext.cert = {internal:{master:{}, conn:{}, web:{}}, external:{}};
+    CertContext.crl = {};
     CertContext.keyStore = new KeyStore(webinosType, webinosRoot);
     /**
      * Helper function to return certificateManager object
@@ -112,14 +113,14 @@ var Certificate = function(webinosType, webinosRoot,  webinosName, serverName_) 
                             logger.log (type + " created private key (certificate generation I step)");
                             try {
                                 obj.csr = certificateManager.createCertificateRequest (privateKey,
-                                    encodeURIComponent (CertContext.userData.country),
-                                    encodeURIComponent (CertContext.userData.state), // state
-                                    encodeURIComponent (CertContext.userData.city), //city
-                                    encodeURIComponent (CertContext.userData.orgname), //orgname
-                                    encodeURIComponent (CertContext.userData.orgunit), //orgunit
+                                    encodeURIComponent (userData.country),
+                                    encodeURIComponent (userData.state), // state
+                                    encodeURIComponent (userData.city), //city
+                                    encodeURIComponent (userData.orgname), //orgname
+                                    encodeURIComponent (userData.orgunit), //orgunit
                                     cn,
-                                    encodeURIComponent (CertContext.userData.email));
-                                if (!obj.csr) throw "userData is empty";
+                                    encodeURIComponent (userData.email));
+                                if (!obj.csr) throw "userData is empty or incorrect";
                             } catch (err) {
                                 CertContext.emit("FUNC_ERROR", "failed generating CSR. user details are missing", err);
                                 return;
@@ -187,10 +188,18 @@ var Certificate = function(webinosType, webinosRoot,  webinosName, serverName_) 
                             } else {
                                 server = "DNS:" + serverName_;
                             }
-                            clientCert = certificateManager.signRequest (csr, 3600, privateKey,
-                                            CertContext.cert.internal.master.cert, certificateType.CLIENT, server);
-                            logger.log ("signed certificate by the PZP/PZH");
-                            callback (true, clientCert);
+                            try {
+                                clientCert = certificateManager.signRequest (csr, 3600, privateKey,
+                                    CertContext.cert.internal.master.cert, certificateType.CLIENT, server);
+                            } catch (err) {
+                                CertContext.emit("FUNC_ERROR", "failed signing client certificate", err);
+                                return;
+                            }
+
+                            if(clientCert) {
+                                logger.log ("signed certificate by the PZP/PZH");
+                                callback (true, clientCert);
+                            }
                         } 
                     });
                 }
@@ -229,12 +238,19 @@ var Certificate = function(webinosType, webinosRoot,  webinosName, serverName_) 
         try {
             getCertificateManager(function(status, certificateManager){
                 if(status) {
+                    var crl;
                     CertContext.keyStore.fetchKey(CertContext.cert.internal.master.key_id, function (status, value) {
                         if (status) {
-                            var crl = certificateManager.addToCRL ("" + value, "" + CertContext.crl.value, "" + pzpCert);
-                            // master.key.value, master.cert.value
-                            logger.log("revoked certificate");
-                            callback (true, crl);
+                            try {
+                                crl = certificateManager.addToCRL ("" + value, "" + CertContext.crl.value, "" + pzpCert); // master.key.value, master.cert.value
+                            } catch(err){
+                                CertContext.emit("FUNC_ERROR", "certificate revoke failed", err);
+                                return;
+                            }
+                            if (crl) {
+                                logger.log("revoked certificate");
+                                callback (true, crl);
+                            }
                         } 
                     });
                 } 
@@ -245,7 +261,7 @@ var Certificate = function(webinosType, webinosRoot,  webinosName, serverName_) 
     };
 };
 
-KeyStore.prototype.__proto__ = require("events").EventEmitter.prototype;
+Certificate.prototype.__proto__ = require("events").EventEmitter.prototype;
 
 if (typeof module !== 'undefined'){
     exports.Certificate = Certificate;    
