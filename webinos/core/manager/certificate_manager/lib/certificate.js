@@ -16,15 +16,16 @@
  * Author: Habib Virji (habib.virji@samsung.com)
  *         Ziran Sun (ziran.sun@samsung.com)
  *******************************************************************************/
-var Certificate = function(webinosType, webinosRoot,  webinosName, serverName_, userData) {
+var Certificate = function(webinosMetaData, userData) {
     "use strict";    
     var dependency = require ("find-dependencies") (__dirname);
     var KeyStore = dependency.global.require (dependency.global.manager.keystore.location);
     var logger = dependency.global.require(dependency.global.util.location, "lib/logging.js") (__filename);
     var CertContext = this, certificateType = Object.freeze({ "SERVER": 0, "CLIENT": 1}), certificateManager;
-    CertContext.cert = {internal:{master:{}, conn:{}, web:{}}, external:{}};
+    CertContext.internal={master:{}, conn:{}, web:{}};
+    CertContext.external={};
     CertContext.crl = {};
-    CertContext.keyStore = new KeyStore(webinosType, webinosRoot);
+    CertContext.keyStore = new KeyStore(webinosMetaData.webinosType, webinosMetaData.webinosRoot);
     /**
      * Helper function to return certificateManager object
      * @param {Function} callback - true if certificate loaded else false
@@ -63,15 +64,15 @@ var Certificate = function(webinosType, webinosRoot,  webinosName, serverName_, 
     function getKeyId(type) {
         var key_id;
         if (type === "PzhPCA" || type === "PzhCA" || type === "PzpCA") {
-            key_id = CertContext.cert.internal.master.key_id = webinosName + "_master";
+            key_id = CertContext.internal.master.key_id = webinosMetaData.webinosName + "_master";
         } else if (type === "PzhP" || type === "Pzh" || type === "Pzp") {
-            key_id = CertContext.cert.internal.conn.key_id = webinosName + "_conn";
+            key_id = CertContext.internal.conn.key_id = webinosMetaData.webinosName + "_conn";
         } else if (type === "PzhWS") {
-            if(!CertContext.cert.internal.webclient) {CertContext.cert.internal.webclient = {}}
-            key_id = CertContext.cert.internal.webclient.key_id = webinosName + "_webclient";
+            if(!CertContext.internal.webclient) {CertContext.internal.webclient = {}}
+            key_id = CertContext.internal.webclient.key_id = webinosMetaData.webinosName + "_webclient";
         } else if (type === "PzhSSL") {
-            if(!CertContext.cert.internal.webssl) {CertContext.cert.internal.webssl = {}}
-            key_id = CertContext.cert.internal.webssl.key_id = webinosName + "_webssl";
+            if(!CertContext.internal.webssl) {CertContext.internal.webssl = {}}
+            key_id = CertContext.internal.webssl.key_id = webinosMetaData.webinosName + "_webssl";
         }
         return key_id;
     }
@@ -96,10 +97,10 @@ var Certificate = function(webinosType, webinosRoot,  webinosName, serverName_, 
         try {
             var obj = {}, key_id = getKeyId(type), cert_type = getCertType(type);
             if (type === "PzhCA") {
-                CertContext.cert.internal.signedCert = {};
-                CertContext.cert.internal.revokedCert = {};
+                CertContext.internal.signedCert = {};
+                CertContext.internal.revokedCert = {};
             } else if (type === "PzpCA") {
-                CertContext.cert.internal.pzh = {}
+                CertContext.internal.pzh = {}
             }
             cn = encodeURIComponent(cn);
 
@@ -129,10 +130,10 @@ var Certificate = function(webinosType, webinosRoot,  webinosName, serverName_, 
                             try {
                                 logger.log (type + " generated CSR (certificate generation II step)");
                                 var serverName;
-                                if (require("net").isIP(serverName_)) {
-                                    serverName = "IP:" + serverName_;
+                                if (require("net").isIP(webinosMetaData.serverName)) {
+                                    serverName = "IP:" + webinosMetaData.serverName;
                                 } else {
-                                    serverName = "DNS:" + serverName_;
+                                    serverName = "DNS:" + webinosMetaData.serverName;
                                 }
                                 obj.cert = certificateManager.selfSignRequest (obj.csr, 3600, privateKey, cert_type, serverName);
                             } catch (err1) {
@@ -140,7 +141,7 @@ var Certificate = function(webinosType, webinosRoot,  webinosName, serverName_, 
                             }
                             logger.log (type + " generated self signed certificate (certificate generation III step)");
                             if (type === "PzhPCA" || type === "PzhCA" || type === "PzpCA") {
-                                CertContext.cert.internal.master.cert = obj.cert;
+                                CertContext.internal.master.cert = obj.cert;
                                 try {
                                     obj.crl = certificateManager.createEmptyCRL (privateKey, obj.cert, 3600, 0);
                                 } catch (err2) {
@@ -149,11 +150,11 @@ var Certificate = function(webinosType, webinosRoot,  webinosName, serverName_, 
                                 }
                                 logger.log (type + " generated crl (certificate generation IV step)");
                                 CertContext.crl.value = obj.crl;
-                                if (type === "PzpCA") { CertContext.cert.internal.master.csr = obj.csr;} // We need to get it signed by PZH during PZP enrollment
+                                if (type === "PzpCA") { CertContext.internal.master.csr = obj.csr;} // We need to get it signed by PZH during PZP enrollment
                                 return callback(true);
                             } else if (type === "PzhP" || type === "Pzh" || type === "Pzp") {
-                                CertContext.cert.internal.conn.cert = obj.cert;
-                                if (type === "Pzp") { CertContext.cert.internal.conn.csr = obj.csr; }
+                                CertContext.internal.conn.cert = obj.cert;
+                                if (type === "Pzp") { CertContext.internal.conn.csr = obj.csr; }
                                 return callback (true, obj.csr);
                             }  else if (type === "PzhWS" || type === "PzhSSL") {
                                 return callback (true, obj.csr);
@@ -180,17 +181,17 @@ var Certificate = function(webinosType, webinosRoot,  webinosName, serverName_, 
         try {
             getCertificateManager(function(status, certificateManager){
                 if (status) {
-                    CertContext.keyStore.fetchKey(CertContext.cert.internal.master.key_id, function (status, privateKey) {
+                    CertContext.keyStore.fetchKey(CertContext.internal.master.key_id, function (status, privateKey) {
                         if (status) {
                             var server,  clientCert;
-                            if (require ("net").isIP (serverName_)) {
-                                server = "IP:" + serverName_;
+                            if (require ("net").isIP (webinosMetaData.serverName)) {
+                                server = "IP:" + webinosMetaData.serverName;
                             } else {
-                                server = "DNS:" + serverName_;
+                                server = "DNS:" + webinosMetaData.serverName;
                             }
                             try {
                                 clientCert = certificateManager.signRequest (csr, 3600, privateKey,
-                                    CertContext.cert.internal.master.cert, certificateType.CLIENT, server);
+                                    CertContext.internal.master.cert, certificateType.CLIENT, server);
                             } catch (err) {
                                 CertContext.emit("FUNC_ERROR", "failed signing client certificate", err);
                                 return;
@@ -239,7 +240,7 @@ var Certificate = function(webinosType, webinosRoot,  webinosName, serverName_, 
             getCertificateManager(function(status, certificateManager){
                 if(status) {
                     var crl;
-                    CertContext.keyStore.fetchKey(CertContext.cert.internal.master.key_id, function (status, value) {
+                    CertContext.keyStore.fetchKey(CertContext.internal.master.key_id, function (status, value) {
                         if (status) {
                             try {
                                 crl = certificateManager.addToCRL ("" + value, "" + CertContext.crl.value, "" + pzpCert); // master.key.value, master.cert.value
@@ -259,6 +260,18 @@ var Certificate = function(webinosType, webinosRoot,  webinosName, serverName_, 
             CertContext.emit("EXCEPTION", "certificate revoke failed", err);
         }
     };
+    CertContext.keyStore.on("READ", function(errMsg, err){
+        CertContext.emit("READ", errMsg, err);
+    });
+    CertContext.keyStore.on("WRITE", function(errMsg, err){
+        CertContext.emit("WRITE", errMsg, err);
+    });
+    CertContext.keyStore.on("CLEANUP", function(errMsg, err){
+        CertContext.emit("CLEANUP", errMsg, err);
+    });
+    CertContext.keyStore.on("FUNC_ERROR", function(errMsg, err){
+        CertContext.emit("FUNC_ERROR", errMsg, err);
+    });
 };
 
 Certificate.prototype.__proto__ = require("events").EventEmitter.prototype;
