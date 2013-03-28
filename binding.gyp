@@ -9,8 +9,8 @@
       'target_name': 'certificate_manager',
       'product_name': 'certificate_manager',
         'sources': [ #Specify your source files here
-          'certificate_manager.cpp',
-          'openssl_wrapper.cpp',
+          'src/certificate_manager.cpp',
+          'src/openssl_wrapper.cpp',
         ],
       
       'conditions': [
@@ -24,6 +24,18 @@
         }],
       ],  
     },
+    {
+    'target_name': 'webinos_wrt',
+    'type': 'none',
+    'toolsets': ['host'],
+    'copies': [
+      {
+        'files': [
+          'build/Release/certificate_manager.node',
+        ],
+        'destination': 'node_modules/',
+      }],
+    }, # end webinos_wrt
   ] # end targets
 }
 
