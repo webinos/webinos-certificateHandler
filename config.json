@@ -1,9 +1,13 @@
 {
-  "country": "UK",
-  "state"  : "MX",
-  "city"   : "London",
-  "orgname": "Webinos",
-  "orgunit": "WP4",
-  "cn"     : "",
-  "email"  : "hello@webinos.org"
+  "name":"webinos-certificateHandler",
+  "description": "Webinos certificate allows creating self signed certificate and gets certfificate signed. It also revocation of certificate. Below are the default certificate values used for creation, personalize your PZP with the below values",
+  "params":{
+    "country": "UK",
+    "state"  : "MX",
+    "city"   : "London",
+    "orgname": "Webinos",
+    "orgunit": "WP4",
+    "cn"     : "",
+    "email"  : "hello@webinos.org"
+  }
 }

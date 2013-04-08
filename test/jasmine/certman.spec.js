@@ -133,7 +133,7 @@ describe("Proper error handling", function() {
 var CertificateManager = require("../../lib/certificate");
 var WebinosPath = require("webinos-utilities").webinosPath;
 var webinosName = "WebinosPZP";
-var certConfig = require("../../config.json");
+var certConfig = require("../../config.json").params;
 var metaData  = {
     webinosType: "Pzp",
     webinosRoot: WebinosPath.webinosPath(),
