@@ -29,7 +29,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-
+#include <time.h>
 /*
  * Note: you CANT use STL in this module - it breaks the Android build.
  */
@@ -307,23 +307,17 @@ int selfSignRequest(char* pemRequest, int days, char* pemCAKey, int certType, ch
   }
 
   ASN1_UTCTIME *s=ASN1_UTCTIME_new();
-  // Jira-issue: WP-37
-  // This is temp solution for putting pzp validity 5 minutes before current time
-  // If there is a small clock difference between machines, it results in cert_not_yet_valid
-  // It does set GMT time but is relevant to machine time.
-  // A better solution would be to have ntp server contacted to get proper time.
-  if(certType == 2) {
-    X509_gmtime_adj(s, long(0-300));
-  }
-  else {
-    X509_gmtime_adj(s, long(0));
-  }
-  // End of WP-37
+  ASN1_UTCTIME_set_string(s, "700101000000Z");
   X509_set_notBefore(cert, s);
-
-  X509_gmtime_adj(s, (long)60*60*24*days);
+  struct tm t;
+  t.tm_hour = 0;
+  t.tm_min = 0;
+  t.tm_sec = 0;
+  t.tm_year = 120;
+  t.tm_mon = 0;
+  t.tm_mday = 1;
+  ASN1_UTCTIME_set(s, mktime(&t));
   X509_set_notAfter(cert, s);
-
   ASN1_UTCTIME_free(s);
 
   if(!(err = X509_set_subject_name(cert, X509_REQ_get_subject_name(req)))) {
@@ -454,26 +448,17 @@ int signRequest(char* pemRequest, int days, char* pemCAKey, char* pemCaCert,  in
 
   //redo all the certificate details, because OpenSSL wants us to work hard
   X509_set_issuer_name(cert, X509_get_subject_name(caCert));
-
   ASN1_UTCTIME *s=ASN1_UTCTIME_new();
-
-  // Jira-issue: WP-37
-  // This is temp solution for putting pzp validity 5 minutes before current time
-  // If there is a small clock difference between machines, it results in cert_not_yet_valid
-  // It does set GMT time but is relevant to machine time.
-  // A better solution would be to have ntp server contacted to get a proper time.
-  if(certType == 1) {
-    X509_gmtime_adj(s, long(0-300));
-  }
-  else {
-    X509_gmtime_adj(s, long(0));
-  }
-  // End of WP-37
-  X509_set_notBefore(cert, s);
-
-  X509_gmtime_adj(s, (long)60*60*24*days);
+  ASN1_UTCTIME_set_string(s, "700101000000Z");
+  struct tm t;
+  t.tm_hour = 0;
+  t.tm_min = 0;
+  t.tm_sec = 0;
+  t.tm_year = 120;
+  t.tm_mon = 0;
+  t.tm_mday = 1;
+  ASN1_UTCTIME_set(s, mktime(&t));
   X509_set_notAfter(cert, s);
-
   ASN1_UTCTIME_free(s);
 
   X509_set_subject_name(cert, X509_REQ_get_subject_name(req));
@@ -594,15 +579,23 @@ int createEmptyCRL(char* pemSigningKey, char* pemCaCert, int crldays, int crlhou
   X509_CRL_set_issuer_name(crl, X509_get_subject_name(caCert));
 
   //set update times (probably not essential, but why not.
-  ASN1_TIME* tmptm = ASN1_TIME_new();
-  X509_gmtime_adj(tmptm, long(0));
-  X509_CRL_set_lastUpdate(crl, tmptm);
-  X509_gmtime_adj(tmptm,(crldays*24+crlhours)*60*60);
-  X509_CRL_set_nextUpdate(crl, tmptm);
-  ASN1_TIME_free(tmptm);
+  ASN1_UTCTIME *s=ASN1_UTCTIME_new();
+  ASN1_UTCTIME_set_string(s, "700101000000Z");
+  X509_CRL_set_lastUpdate(crl, s);
+
+  struct tm t;
+  t.tm_hour = 0;
+  t.tm_min = 0;
+  t.tm_sec = 0;
+  t.tm_year = 120;
+  t.tm_mon = 0;
+  t.tm_mday = 1;
+
+  ASN1_UTCTIME_set(s, mktime(&t));
+  X509_CRL_set_nextUpdate(crl, s);
+  ASN1_UTCTIME_free(s);
 
   X509_CRL_sort(crl);
-
   //extensions would go here.
 
   if (!(err = X509_CRL_sign(crl,caKey,EVP_sha1())))
