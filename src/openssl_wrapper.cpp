@@ -450,6 +450,7 @@ int signRequest(char* pemRequest, int days, char* pemCAKey, char* pemCaCert,  in
   X509_set_issuer_name(cert, X509_get_subject_name(caCert));
   ASN1_UTCTIME *s=ASN1_UTCTIME_new();
   ASN1_UTCTIME_set_string(s, "700101000000Z");
+  X509_set_notBefore(cert, s);
   struct tm t;
   t.tm_hour = 0;
   t.tm_min = 0;
