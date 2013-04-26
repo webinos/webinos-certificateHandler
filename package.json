@@ -14,11 +14,15 @@
   { "webinos-keyStorage" : "git://github.com/webinos/webinos-keyStorage.git", 
     "webinos-utilities"  : "git://github.com/webinos/webinos-utilities.git"
   }
+, "devDependencies" : {
+    "jasmine-node": "~1.7.0"
+  }
 , "engines":
-  { "node": ">= 0.6.0"
+  { "node": ">= 0.8.0"
   , "npm": ">= 1.1.17"
   }
 , "scripts": 
   { "install": "node-gyp configure build"
+,   "test": "jasmine-node ./test/jasmine"  
   }                                                                                                                                                          
 }
