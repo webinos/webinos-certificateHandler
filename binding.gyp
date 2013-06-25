@@ -31,7 +31,7 @@
     'copies': [
       {
         'files': [
-          'build/$(BUILDTYPE)/certificate_manager.node',
+          'build/Release/certificate_manager.node',
         ],
         'destination': 'node_modules/',
       }],
