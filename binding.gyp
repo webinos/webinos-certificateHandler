@@ -31,7 +31,7 @@
     'copies': [
       {
         'files': [
-          'build/$(CONFIGURATION)/certificate_manager.node',
+          'build/$(configuration)/certificate_manager.node',
         ],
         'destination': 'node_modules/',
       }],
