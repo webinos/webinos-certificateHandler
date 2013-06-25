@@ -27,12 +27,19 @@
     {
     'target_name': 'webinos_wrt',
     'type': 'none',
-	'dependencies': ['certificate_manager'],
-    'copies': [
-      {
-        'files': [
-          'build/$(BUILDTYPE)/certificate_manager.node',
-        ],
+    'toolsets': ['host'],
+    'copies': [{
+	  'files': [],
+      'conditions': [
+	   ['BUILDTYPE=="Release"', 
+        {'files': [
+          'build/Release/certificate_manager.node',
+		  ]}
+        ],['BUILDTYPE=="Debug"', 
+        {'files': [
+          'build/Debug/certificate_manager.node',
+		  ]}
+        ]],
         'destination': 'node_modules/',
       }],
     }, # end webinos_wrt
