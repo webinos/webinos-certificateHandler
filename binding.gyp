@@ -28,10 +28,11 @@
     'target_name': 'webinos_wrt',
     'type': 'none',
     'toolsets': ['host'],
+	'dependencies': ['certificate_manager'],
     'copies': [
       {
         'files': [
-          'build/Release/certificate_manager.node',
+          'build/$(BUILDTYPE)/certificate_manager.node',
         ],
         'destination': 'node_modules/',
       }],
