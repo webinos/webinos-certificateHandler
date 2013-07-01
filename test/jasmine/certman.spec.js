@@ -199,11 +199,48 @@ describe("CertificateManager Negative JS tests", function() {
         CertificateManagerInstance.generateSignedCertificate(undefined);
     });
 });
-/*describe("get hash", function() {
+describe("get hash", function() {
     it("can get hash of public certificate", function() {
         var path = require("path").join(__dirname,"../conn.pem");
         var hash = certman.getHash(path);
         expect(hash).not.toBeNull();
         expect(hash).not.toEqual([]);
     });
-});*/
+});
+
+describe("parse certificate", function() {
+    it("parse certificate", function() {
+        var path = require("path").join(__dirname,"../conn.pem");
+        var parseCert = CertificateManagerInstance.parseCert((require("fs").readFileSync(path)).toString());
+        console.log(parseCert);
+        expect(parseCert).not.toBeNull();
+        expect(parseCert.version).toEqual(3);
+        expect(parseCert.subject).not.toBeNull();
+        expect(parseCert.subject.CN).toContain("PzhWS");
+        expect(parseCert.issuer).not.toBeNull();
+        expect(parseCert.issuer.CN).toContain("PzhPCA");
+        expect(parseCert.serial).not.toBeNull();
+        expect(parseCert.validFrom).not.toBeNull();
+        expect(parseCert.validTo).not.toBeNull();
+        expect(parseCert.publicKeyAlgorithm).not.toBeNull();
+        expect(parseCert.publicKey).not.toBeNull();
+        expect(parseCert.signatureAlgorithm).not.toBeNull();
+        expect(parseCert.signature).not.toBeNull();
+        expect(parseCert.fingerPrint).not.toBeNull();
+    });
+});
+describe("parse crl", function() {
+    it("crl", function() {
+        var path = require("path").join(__dirname,"../crl.pem");
+        var parseCrl = CertificateManagerInstance.parseCrl((require("fs").readFileSync(path)).toString());
+        expect(parseCrl).not.toBeNull();
+        expect(parseCrl.version).toEqual(1);
+        expect(parseCrl.lastUpdate).not.toBeNull();
+        expect(parseCrl.nextUpdate).not.toBeNull();
+        expect(parseCrl.signatureAlg).not.toBeNull();
+        expect(parseCrl.signature).not.toBeNull();
+        expect(parseCrl.issuer).not.toBeNull();
+        expect(parseCrl.issuer.CN).not.toBeNull();
+    });
+});
+

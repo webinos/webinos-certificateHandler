@@ -49,6 +49,8 @@ int genRsaKey(const int bits, char * privkey)
   if (!(err = RSA_generate_key_ex(rsa,bits,bn,NULL)))  goto error;
   if (!(err = PEM_write_bio_RSAPrivateKey(out, rsa, NULL, NULL, 0, NULL, NULL)))  goto error;
   if (!(err = BIO_read(out,privkey,bits) <= 0))  goto error;
+  err = 0;
+
   error:
     if (bn != NULL)  BN_free(bn);
     if (rsa != NULL) RSA_free(rsa);
@@ -85,6 +87,7 @@ char* org, char *orgUnit, char* cname, char* email){
 
   BIO_get_mem_ptr(mem, &bptr);
   BIO_read(mem, result, bptr->length);
+  err = 0;
   error:
     if(bmem    != NULL) BIO_free(bmem);
     if(mem     != NULL) BIO_free(mem);
@@ -271,6 +274,7 @@ int selfSignRequest(char* pemRequest, int days, char* pemCAKey, int certType, ch
   PEM_write_bio_X509(mem,cert);
   BIO_get_mem_ptr(mem, &bptr);
   BIO_read(mem, result, bptr->length);
+  err = 0;
   error:
     if (res!=NULL)        ASN1_INTEGER_free(res);
     if (s != NULL)        ASN1_UTCTIME_free(s);
@@ -282,7 +286,7 @@ int selfSignRequest(char* pemRequest, int days, char* pemCAKey, int certType, ch
     if (bioReq != NULL)   BIO_free_all(bioReq);
     if (bioCAKey != NULL) BIO_free_all(bioCAKey);
 
-  return 0;
+  return err;
 
 }
 
@@ -350,6 +354,7 @@ int signRequest(char* pemRequest, int days, char* pemCAKey, char* pemCaCert,  in
   PEM_write_bio_X509(mem,cert);
   BIO_get_mem_ptr(mem, &bptr);
   BIO_read(mem, result, bptr->length);
+  err =0;
 error:
   if(req)      X509_REQ_free(req);
   if(caKey)    EVP_PKEY_free(caKey);
@@ -393,7 +398,7 @@ int createEmptyCRL(char* pemSigningKey, char* pemCaCert, int crldays, int crlhou
   PEM_write_bio_X509_CRL(mem,crl);
   BIO_get_mem_ptr(mem, &bptr);
   BIO_read(mem, result, bptr->length);
-
+  err = 0;
 error:
   if (s) ASN1_UTCTIME_free(s);
   if (bioCert) BIO_free(bioCert);
@@ -402,7 +407,7 @@ error:
   if (caCert) X509_free(caCert);
   if (caKey) EVP_PKEY_free(caKey);
   if (crl) X509_CRL_free(crl);
-  return 0;
+  return err;
 }
 
 int addToCRL(char* pemSigningKey, char* pemOldCrl, char* pemRevokedCert, char* result) {
@@ -440,11 +445,12 @@ int addToCRL(char* pemSigningKey, char* pemOldCrl, char* pemRevokedCert, char* r
   PEM_write_bio_X509_CRL(mem,crl);
   BIO_get_mem_ptr(mem, &bptr);
   BIO_read(mem, result, bptr->length);
-
+  err = 0;
   error:
+    if (crl != NULL) X509_CRL_free(crl);
     if (badCert != NULL)       X509_free(badCert);
     if (caKey != NULL)         EVP_PKEY_free(caKey);
-    if (revoked != NULL)       X509_REVOKED_free(revoked);
+    //if (revoked != NULL)       X509_REVOKED_free(revoked);
     if (tmptm != NULL)         ASN1_TIME_free(tmptm);
     if (bioRevCert != NULL)    BIO_free_all(bioRevCert);
     if (bioSigningKey != NULL) BIO_free_all(bioSigningKey);

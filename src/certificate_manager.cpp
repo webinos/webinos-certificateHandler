@@ -64,8 +64,7 @@ v8::Handle<Value> _genRsaKey(const Arguments& args)
     char *pem=(char *)calloc(keyLen+1, sizeof(char)); /* Null-terminate */
     int res = 0;
     res = ::genRsaKey(keyLen, pem);
-  if (res != 0) {
-
+    if (res != 0) {
         return ThrowException(Exception::TypeError(String::New("**Error creating private key**")));
     }
     
@@ -102,7 +101,7 @@ v8::Handle<Value> _createCertificateRequest(const Arguments& args)
     res = ::createCertificateRequest(pem, key.operator*(),
       country.operator*(), state.operator*(), loc.operator*(),
       organisation.operator*(), organisationUnit.operator*(), cname.operator*(), email.operator*());    
-    if (res <= 0) {
+    if (res != 0) {
       return ThrowException(Exception::TypeError(String::New("Error creating certificate request")));
     }
 
@@ -163,7 +162,7 @@ v8::Handle<Value> _signRequest(const Arguments& args)
     char *pem=(char *)calloc(BUFFER_SIZE+1, sizeof(char)); /* Null-terminate */
     int res = 0;
     res = ::signRequest(pemRequest.operator*(),days,pemCAKey.operator*(),pemCACert.operator*(),certType,uri.operator*(),pem);
-    if (res <= 0) {
+    if (res != 0) {
       return ThrowException(Exception::Error(String::New("Failed to sign a certificate")));
     }
 
@@ -227,7 +226,7 @@ v8::Handle<Value> _addToCRL(const Arguments& args)
     char *pem=(char *)calloc(BUFFER_SIZE+1, sizeof(char)); /* Null-terminate */
     int res = 0;
     res = ::addToCRL(pemKey.operator*(), pemOldCRL.operator*(), pemRevokedCert.operator*(),pem);
-    if (res <= 0) {
+    if (res != 0) {
         return ThrowException(Exception::TypeError(String::New("Failed to add a certificate to the CRL")));
     }
     
