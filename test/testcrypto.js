@@ -47,10 +47,22 @@ if (debug) console.log("PZP Certificate, signed by PZH CA: \n[" + pzpCert + "]\n
 var crlWithKey = certman.addToCRL(caKey, crl, pzpCert);
 if (debug) console.log("PZP Certificate revoked, new CRL: \n[" + crlWithKey + "]\n");
 
+
 var cert_path = path.join(__dirname, "conn.pem");
+//var data = require("fs").readFileSync(cert_path, "utf8")
 var hash = certman.getHash(cert_path);
 console.log("PZP public hash key, hash: \n[" + hash + "]\n");
 
+var certPath  = path.join(__dirname, "conn.pem");
+var data = require("fs").readFileSync(certPath)
+console.log(certman.parseCert(data.toString()));
+
+var crlPath  = path.join(__dirname, "crl.pem");
+var data1 = require("fs").readFileSync(crlPath)
+console.log(certman.parseCrl(data1.toString()));
+
+//var parseCert = certman.parseCert(data.toString());
+//console.log(" \n[ certificate data " + parseCert + "]\n");
 
  
 
