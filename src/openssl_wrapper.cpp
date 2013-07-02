@@ -580,6 +580,7 @@ int parseCertificate(char *certData, v8::Local<v8::Object> parseCert){
     if (bufff) delete [] bufff;
     if (fp) delete [] fp;
     if (md) delete [] md;
+    if (signatureBuf) delete [] signatureBuf;
     return 0;
 }
 
