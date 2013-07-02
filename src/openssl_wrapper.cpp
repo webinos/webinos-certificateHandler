@@ -464,7 +464,7 @@ int parseCertificate(char *certData, v8::Local<v8::Object> parseCert){
   X509* cert=NULL;
   char buf[256];
   X509_CINF *ci=NULL;
-  char *details=NULL, *serialNum = NULL, *details1=NULL;
+  char *details=NULL, *serialNum = NULL, *details1=NULL, *bufff = NULL, *signatureBuf=NULL, *fp =NULL;
   ASN1_INTEGER *asn=NULL;
   ASN1_STRING  *asn1=NULL;
   BIGNUM *bignum=NULL;
@@ -473,7 +473,8 @@ int parseCertificate(char *certData, v8::Local<v8::Object> parseCert){
   const EVP_MD *digest=NULL;
   STACK_OF(ASN1_OBJECT) *eku=NULL;
   int len;
-
+  unsigned char *buff = NULL, *md = NULL;
+  unsigned int n;
   if(!(bio = BIO_new(BIO_s_mem()))) goto error;
   if(!(bioCert= BIO_new_mem_buf(certData, -1))) goto error;
   if(!(cert = PEM_read_bio_X509(bioCert, NULL, NULL, NULL)))  goto error;
@@ -518,9 +519,9 @@ int parseCertificate(char *certData, v8::Local<v8::Object> parseCert){
   publicKey = X509_get_pubkey(cert);
   if (publicKey->type == EVP_PKEY_RSA) {
     rsa = EVP_PKEY_get1_RSA(publicKey);
-    unsigned char buff[BN_num_bytes(rsa->n)];
+    buff = new unsigned char[BN_num_bytes(rsa->n)];
     int n = BN_bn2bin(rsa->n, buff); // rsa->n (modulus) is in big number format
-    char bufff[n*3];
+    bufff = new char[n*3];
     for (int i = 0; i < n ; i = i + 1){
       sprintf(bufff+(i*3), "%02x%s", buff[i],((i+1) == n) ? "":":");
     }
@@ -536,22 +537,21 @@ int parseCertificate(char *certData, v8::Local<v8::Object> parseCert){
 
    //Signature
   asn1 =  cert->signature;
-  char signatureBuf[(asn1->length)*3];
+  signatureBuf = new char[(asn1->length)*3];
   for(int i = 0; i < (asn1->length); i = i + 1){
     sprintf(signatureBuf+(i*3), "%02x%s", asn1->data[i],((i+1) == asn1->length) ? "":":");
   }
-  parseCert->Set(String::New("signature"), String::New(signatureBuf));
+  parseCert->Set(String::New("signature"), String::New((char*)signatureBuf));
 
   // fingerPrint
   digest = EVP_sha1();//EVP_sha1();
-  unsigned int n;
-  unsigned char md[EVP_MAX_MD_SIZE];
+  md = new unsigned char[EVP_MAX_MD_SIZE];
   if(X509_digest(cert, digest, md, &n) && n > 0) {
-    char fp[EVP_MAX_MD_SIZE*3];
+    fp = new char[EVP_MAX_MD_SIZE*3];
     for (int j = 0; j < (int) n; j++) {
       sprintf(fp+(j*3), "%02x%s", md[j],((j+1) == n) ? "":":");
     }
-    parseCert->Set(String::New("fingerPrint"), String::New(fp));
+    parseCert->Set(String::New("fingerPrint"), String::New((char *)fp));
   }
 
   //Extensions
@@ -576,13 +576,17 @@ int parseCertificate(char *certData, v8::Local<v8::Object> parseCert){
     if (rsa != NULL) RSA_free(rsa);
     if (cert != NULL) X509_free(cert);
     if (bignum != NULL) BN_free(bignum);
+    if (buff) delete [] buff;
+    if (bufff) delete [] bufff;
+    if (fp) delete [] fp;
+    if (md) delete [] md;
     return 0;
 }
 
 int parseCrl(char *crl, v8::Local<v8::Object> newCrl) {
   BIO *bp=NULL, *bio= NULL;
   X509_CRL* x=NULL;
-  char *details=NULL;
+  char *details=NULL, *signatureBuf=NULL;
   char buf [256];
   ASN1_STRING  *asn1=NULL;
   ASN1_TIME *lastUpdate=NULL, *nextUpdate=NULL;
@@ -614,11 +618,11 @@ int parseCrl(char *crl, v8::Local<v8::Object> newCrl) {
   newCrl->Set(String::New("signatureAlg"), String::New(buf));
  //Signature
   asn1 =  x->signature;
-  char signatureBuf[(asn1->length)*3];
+  signatureBuf = new char[(asn1->length)*3];
   for(int i = 0; i < (asn1->length); i = i + 1){
     sprintf(signatureBuf+(i*3), "%02x%s", asn1->data[i],((i+1) == asn1->length) ? "":":");
   }
-  newCrl->Set(String::New("signature"), String::New(signatureBuf));
+  newCrl->Set(String::New("signature"), String::New((char *)signatureBuf));
 error:
  if (details != NULL) OPENSSL_free(details);
   //if (lastUpdate != NULL) ASN1_TIME_free(lastUpdate);
@@ -626,7 +630,7 @@ error:
   if (bio != NULL) BIO_free_all(bio);
   if (bp != NULL) BIO_free_all(bp);
   if (x != NULL) X509_CRL_free(x);
-
+  if (signatureBuf) delete [] signatureBuf;
   //if (asn1 != NULL) ASN1_STRING_free(asn1);
   return 0;
 }
