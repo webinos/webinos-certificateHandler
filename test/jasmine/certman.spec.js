@@ -244,43 +244,50 @@ describe("parse crl", function() {
 });
 
 describe("validate certificate based on CAList", function() {
-    var caList= [(require("fs").readFileSync(require("path").join(__dirname, "pzh_ca.pem"))).toString(),
+    var path, result, status, caList= [(require("fs").readFileSync(require("path").join(__dirname, "pzh_ca.pem"))).toString(),
         (require("fs").readFileSync(require("path").join(__dirname, "pzhp_ca.pem"))).toString(),
         (require("fs").readFileSync(require("path").join(__dirname, "pzp_ca.pem"))).toString()];
     it("validate PZH CA certificate", function() {
-        var path = require("path").join(__dirname,"pzh_ca.pem");
-        var status = CertificateManagerInstance.validateConnection((require("fs").readFileSync(path)).toString(), caList);
+        path = require("fs").readFileSync(require("path").join(__dirname,"pzh_ca.pem")).toString();
+        result =   CertificateManagerInstance.parseCert(path, "pem");
+        status = CertificateManagerInstance.validateConnection(result.issuer.CN, caList);
         expect(status).toBeTruthy();
     });
     it("validate PZH CONN certificate", function() {
-        path = require("path").join(__dirname,"pzh_conn");
-        status = CertificateManagerInstance.validateConnection((require("fs").readFileSync(path)).toString(), caList);
+        path =  require("fs").readFileSync(require("path").join(__dirname,"pzh_conn")).toString();
+        result =   CertificateManagerInstance.parseCert(path, "pem");
+        status = CertificateManagerInstance.validateConnection(result.issuer.CN, caList);
         expect(status).toBeTruthy();
     });
     it("validate PZH Provider CA certificate", function() {
-        path = require("path").join(__dirname,"pzhp_ca.pem");
-        status = CertificateManagerInstance.validateConnection((require("fs").readFileSync(path)).toString(), caList);
+        path =  require("fs").readFileSync(require("path").join(__dirname,"pzhp_ca.pem")).toString();
+        result =   CertificateManagerInstance.parseCert(path, "pem");
+        status = CertificateManagerInstance.validateConnection(result.issuer.CN, caList);
         expect(status).toBeTruthy();
     });
     it("validate PZH WebSSL certificate", function() {
-        path = require("path").join(__dirname,"pzh_webssl.pem");
-        status = CertificateManagerInstance.validateConnection((require("fs").readFileSync(path)).toString(), caList);
+        path =  require("fs").readFileSync(require("path").join(__dirname,"pzh_webssl.pem")).toString();
+        result =   CertificateManagerInstance.parseCert(path, "pem");
+        status = CertificateManagerInstance.validateConnection(result.issuer.CN, caList);
         expect(status).toBeTruthy();
     });
     it("validate PZP CA certificate", function() {
-        path = require("path").join(__dirname,"pzp_ca.pem");
-        status = CertificateManagerInstance.validateConnection((require("fs").readFileSync(path)).toString(), caList);
+        path =  require("fs").readFileSync(require("path").join(__dirname,"pzp_ca.pem")).toString();
+        result =   CertificateManagerInstance.parseCert(path, "pem");
+        status = CertificateManagerInstance.validateConnection(result.issuer.CN, caList);
         expect(status).toBeTruthy();
     });
     it("validate PZP CONN certificate", function() {
-        path = require("path").join(__dirname,"pzp_conn.pem");
-        status = CertificateManagerInstance.validateConnection((require("fs").readFileSync(path)).toString(), caList);
+        path =  require("fs").readFileSync(require("path").join(__dirname,"pzp_conn.pem")).toString();
+        result =   CertificateManagerInstance.parseCert(path, "pem");
+        status = CertificateManagerInstance.validateConnection(result.issuer.CN, caList);
         expect(status).toBeTruthy();
     });
     it("negative test - check if verificatio fails if we do not have valid certificate", function(){
-        var path = require("path").join(__dirname,"pzp_conn.pem");
+        path =  require("fs").readFileSync(require("path").join(__dirname,"pzp_conn.pem")).toString();
+        result =   CertificateManagerInstance.parseCert(path, "pem");
         var tmpList= [(require("fs").readFileSync(require("path").join(__dirname, "pzhp_ca.pem"))).toString()];
-        var status = CertificateManagerInstance.validateConnection((require("fs").readFileSync(path)).toString(), tmpList);
+        status = CertificateManagerInstance.validateConnection(result.issuer.CN, tmpList);
         expect(status).toBeFalsy();
     });
 });
