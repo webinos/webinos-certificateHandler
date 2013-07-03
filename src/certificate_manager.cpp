@@ -270,10 +270,11 @@ v8::Handle<Value> _getHash(const Arguments& args)
 v8::Handle<Value> _parseCert(const Arguments& args)
 {
   HandleScope scope;
-  if ((args.Length() == 1) && args[0]->IsString()) {
+  if ((args.Length() == 2) && args[0]->IsString() && args[1]->IsNumber()) {
     String::Utf8Value certFile(args[0]->ToString());
+    int format = args[1]->Int32Value();
     Local<Object> result = Object::New();
-    int res = ::parseCertificate(certFile.operator*(), result);
+    int res = ::parseCertificate(certFile.operator*(), format, result);
     if (res != 0) {
       return ThrowException(Exception::TypeError(String::New("Failed to parse certificate")));
     }
@@ -285,22 +286,37 @@ v8::Handle<Value> _parseCert(const Arguments& args)
   }
 }
 
- v8::Handle<Value> _parseCrl(const Arguments& args)
- {
+v8::Handle<Value> _parseCrl(const Arguments& args)
+{
    HandleScope scope;
-   if ((args.Length() == 1) && args[0]->IsString()) {
+   if ((args.Length() == 2) && args[0]->IsString() && args[1]->IsNumber()) {
      String::Utf8Value crlFile(args[0]->ToString());
+     int format = args[1]->Int32Value();
      Local<Object> result = Object::New();
-     int res = ::parseCrl(crlFile.operator*(), result);
+     int res = ::parseCrl(crlFile.operator*(), format, result);
      if (res != 0) {
-       return ThrowException(Exception::TypeError(String::New("Failed to parse certificate")));
+       return ThrowException(Exception::TypeError(String::New("Failed to parse crl")));
      }
      return scope.Close(result);
    }
    else {
      return ThrowException(Exception::TypeError(String::New("file expected")));
    }
- }
+}
+v8::Handle<Value> _verifyCertificate(const Arguments& args)
+{
+   HandleScope scope;
+   if ((args.Length() == 2) && args[0]->IsString() && args[1]->IsArray()) {
+     String::Utf8Value validateCert(args[0]->ToString());
+     Handle<Array> array = Handle<Array>::Cast(args[1]);
+     int res = ::verifyCertificate(validateCert.operator*(), array);
+     Local<Integer> result = Integer::New(res);
+     return scope.Close(result);
+   }
+   else {
+     return ThrowException(Exception::TypeError(String::New("file expected")));
+   }
+}
 extern "C" {
   static void init(v8::Handle<Object> target)
   {
@@ -313,7 +329,7 @@ extern "C" {
     NODE_SET_METHOD(target,"getHash",_getHash);
     NODE_SET_METHOD(target,"parseCert",_parseCert);
     NODE_SET_METHOD(target,"parseCrl",_parseCrl);
-
+    NODE_SET_METHOD(target,"verifyCertificate",_verifyCertificate);
   }
   NODE_MODULE(certificate_manager,init);
 }

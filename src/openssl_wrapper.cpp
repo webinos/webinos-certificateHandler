@@ -459,8 +459,8 @@ int addToCRL(char* pemSigningKey, char* pemOldCrl, char* pemRevokedCert, char* r
    return err;
 }
 
-int parseCertificate(char *certData, v8::Local<v8::Object> parseCert){
-  BIO* bioCert=NULL, *bio=NULL;
+int parseCertificate(char *certData, int format, v8::Local<v8::Object> parseCert){
+  BIO* bioCert=NULL, *bio=NULL, *b64=NULL;
   X509* cert=NULL;
   char buf[256];
   X509_CINF *ci=NULL;
@@ -477,7 +477,13 @@ int parseCertificate(char *certData, v8::Local<v8::Object> parseCert){
   unsigned int n;
   if(!(bio = BIO_new(BIO_s_mem()))) goto error;
   if(!(bioCert= BIO_new_mem_buf(certData, -1))) goto error;
-  if(!(cert = PEM_read_bio_X509(bioCert, NULL, NULL, NULL)))  goto error;
+  if (format == 1){
+    if(!(cert = PEM_read_bio_X509_AUX(bioCert, NULL, NULL, NULL)))  goto error;
+  } else if (format == 2){
+     if(!(b64 = BIO_new(BIO_f_base64()))) goto error;
+     bioCert = BIO_push(b64, bioCert);
+     cert = d2i_X509_bio(bioCert, NULL);
+  }
   ci = cert->cert_info;
 
   //Version
@@ -580,11 +586,12 @@ int parseCertificate(char *certData, v8::Local<v8::Object> parseCert){
     if (bufff) delete [] bufff;
     if (fp) delete [] fp;
     if (md) delete [] md;
+    if (signatureBuf) delete [] signatureBuf;
     return 0;
 }
 
-int parseCrl(char *crl, v8::Local<v8::Object> newCrl) {
-  BIO *bp=NULL, *bio= NULL;
+int parseCrl(char *crl, int format, v8::Local<v8::Object> newCrl) {
+  BIO *bp=NULL, *bio= NULL, *b64 = NULL;
   X509_CRL* x=NULL;
   char *details=NULL, *signatureBuf=NULL;
   char buf [256];
@@ -594,7 +601,14 @@ int parseCrl(char *crl, v8::Local<v8::Object> newCrl) {
 
   if(!(bp = BIO_new_mem_buf(crl, -1))) goto error;
   if(!(bio = BIO_new(BIO_s_mem()))) goto error;
-  if(!(x = PEM_read_bio_X509_CRL(bp, NULL, NULL, NULL))) goto error;
+
+  if (format == 1){
+    if(!(x = PEM_read_bio_X509_CRL(bp, NULL, NULL, NULL))) goto error;
+  } else if (format == 2){
+       if(!(b64 = BIO_new(BIO_f_base64()))) goto error;
+       bp = BIO_push(b64, bp);
+       x = d2i_X509_CRL_bio(bp, NULL);
+  }
    // Issuer
   if(!(details = X509_NAME_oneline(X509_CRL_get_issuer(x), 0, 0))) goto error;
   newCrl->Set(String::New("issuer"), String::New(details));
@@ -628,11 +642,51 @@ error:
   //if (lastUpdate != NULL) ASN1_TIME_free(lastUpdate);
   //if (nextUpdate != NULL) ASN1_TIME_free(nextUpdate);
   if (bio != NULL) BIO_free_all(bio);
+  if (b64 != NULL) BIO_free_all(b64);
   if (bp != NULL) BIO_free_all(bp);
   if (x != NULL) X509_CRL_free(x);
   if (signatureBuf) delete [] signatureBuf;
   //if (asn1 != NULL) ASN1_STRING_free(asn1);
   return 0;
+}
+
+int verifyCertificate(char *validateCert,  v8::Handle<v8::Array>masterCertificate){
+  int ret=0;
+  X509_STORE *cert_ctx=NULL;
+  X509_LOOKUP *lookup=NULL;
+  X509 *x=NULL, *tmp=NULL;
+  BIO *bioCert = NULL, *tmpBIO=NULL;
+  X509_STORE_CTX *csc=NULL;
+
+  // x=PEM_read_bio_X509_CRL(in,NULL,NULL,NULL);
+  // i=X509_STORE_add_crl(ctx->store_ctx,x);
+  if(!(cert_ctx=X509_STORE_new())) goto error;
+  for (int i = 0; i < (int)masterCertificate->Length(); i++) {
+    String::Utf8Value certFile((masterCertificate->Get(i))->ToString());
+    if(!(tmpBIO= BIO_new_mem_buf(certFile.operator*(), -1))) goto error;
+    if(!(tmp=PEM_read_bio_X509_AUX(tmpBIO,NULL,NULL,NULL))) goto error;
+    X509_STORE_add_cert(cert_ctx,tmp);
+    X509_free(tmp);
+    BIO_free(tmpBIO);
+
+  }
+ // if (!(lookup=X509_STORE_add_lookup(cert_ctx,X509_LOOKUP_hash_dir()))) goto error;
+//  X509_LOOKUP_add_dir(lookup,NULL,X509_FILETYPE_DEFAULT);
+
+  if(!(bioCert= BIO_new_mem_buf(validateCert, -1))) goto error;
+  if(!(x = PEM_read_bio_X509_AUX(bioCert, NULL, NULL, NULL)))  goto error;
+  if(!(csc = X509_STORE_CTX_new())) goto error;
+  X509_STORE_set_flags(cert_ctx, 0);
+  if(!X509_STORE_CTX_init(csc,cert_ctx,x,0)) goto error;
+  ret =X509_verify_cert(csc);
+
+error:
+  if (lookup) X509_LOOKUP_free(lookup);
+  if (csc) X509_STORE_CTX_free(csc);
+  if (x != NULL) X509_free(x);
+  if (bioCert != NULL) BIO_free(bioCert);
+  if (cert_ctx != NULL) X509_STORE_free(cert_ctx);
+  return ret;
 }
 
 

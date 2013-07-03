@@ -55,11 +55,15 @@ console.log("PZP public hash key, hash: \n[" + hash + "]\n");
 
 var certPath  = path.join(__dirname, "conn.pem");
 var data = require("fs").readFileSync(certPath)
-console.log(certman.parseCert(data.toString()));
+console.log(certman.parseCert(data.toString(), 1));
+
+certPath  = path.join(__dirname, "base64_cert");
+data = require("fs").readFileSync(certPath)
+console.log(certman.parseCert(data.toString(), 2));
 
 var crlPath  = path.join(__dirname, "crl.pem");
 var data1 = require("fs").readFileSync(crlPath)
-console.log(certman.parseCrl(data1.toString()));
+console.log(certman.parseCrl(data1.toString(), 1));
 
 //var parseCert = certman.parseCert(data.toString());
 //console.log(" \n[ certificate data " + parseCert + "]\n");
