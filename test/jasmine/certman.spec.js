@@ -148,7 +148,7 @@ describe("CertificateManager Server JS tests", function() {
     it("generates server private key, csr, self signed certificate and crl", function() {
         var cn ="PzpCA:" +  webinosName;
         var csr = CertificateManagerInstance.generateSelfSignedCertificate("PzpCA", cn);
-	      expect(csr).toBeTruthy();
+	    expect(csr).toBeTruthy();
         expect(CertificateManagerInstance.internal.master.cert).toContain(CERT_START);
         expect(CertificateManagerInstance.internal.master.cert).toContain(CERT_END);
         expect(CertificateManagerInstance.crl.value).toContain(CRL_START);
@@ -199,11 +199,95 @@ describe("CertificateManager Negative JS tests", function() {
         CertificateManagerInstance.generateSignedCertificate(undefined);
     });
 });
-/*describe("get hash", function() {
+describe("get hash", function() {
     it("can get hash of public certificate", function() {
         var path = require("path").join(__dirname,"../conn.pem");
         var hash = certman.getHash(path);
         expect(hash).not.toBeNull();
         expect(hash).not.toEqual([]);
     });
-});*/
+});
+
+describe("parse certificate", function() {
+    it("parse certificate", function() {
+        var path = require("path").join(__dirname,"../conn.pem");
+        var parseCert = CertificateManagerInstance.parseCert((require("fs").readFileSync(path)).toString());
+        expect(parseCert).not.toBeNull();
+        expect(parseCert.version).toEqual(3);
+        expect(parseCert.subject).not.toBeNull();
+        expect(parseCert.subject.CN).toContain("PzhWS");
+        expect(parseCert.issuer).not.toBeNull();
+        expect(parseCert.issuer.CN).toContain("PzhPCA");
+        expect(parseCert.serial).not.toBeNull();
+        expect(parseCert.validFrom).not.toBeNull();
+        expect(parseCert.validTo).not.toBeNull();
+        expect(parseCert.publicKeyAlgorithm).not.toBeNull();
+        expect(parseCert.publicKey).not.toBeNull();
+        expect(parseCert.signatureAlgorithm).not.toBeNull();
+        expect(parseCert.signature).not.toBeNull();
+        expect(parseCert.fingerPrint).not.toBeNull();
+    });
+});
+describe("parse crl", function() {
+    it("crl", function() {
+        var path = require("path").join(__dirname,"../crl.pem");
+        var parseCrl = CertificateManagerInstance.parseCrl((require("fs").readFileSync(path)).toString());
+        expect(parseCrl).not.toBeNull();
+        expect(parseCrl.version).toEqual(1);
+        expect(parseCrl.lastUpdate).not.toBeNull();
+        expect(parseCrl.nextUpdate).not.toBeNull();
+        expect(parseCrl.signatureAlg).not.toBeNull();
+        expect(parseCrl.signature).not.toBeNull();
+        expect(parseCrl.issuer).not.toBeNull();
+        expect(parseCrl.issuer.CN).not.toBeNull();
+    });
+});
+
+describe("validate certificate based on CAList", function() {
+    var path, result, status, caList= [(require("fs").readFileSync(require("path").join(__dirname, "pzh_ca.pem"))).toString(),
+        (require("fs").readFileSync(require("path").join(__dirname, "pzhp_ca.pem"))).toString(),
+        (require("fs").readFileSync(require("path").join(__dirname, "pzp_ca.pem"))).toString()];
+    it("validate PZH CA certificate", function() {
+        path = require("fs").readFileSync(require("path").join(__dirname,"pzh_ca.pem")).toString();
+        result =   CertificateManagerInstance.parseCert(path, "pem");
+        status = CertificateManagerInstance.validateConnection(result.issuer.CN, caList);
+        expect(status).toBeTruthy();
+    });
+    it("validate PZH CONN certificate", function() {
+        path =  require("fs").readFileSync(require("path").join(__dirname,"pzh_conn")).toString();
+        result =   CertificateManagerInstance.parseCert(path, "pem");
+        status = CertificateManagerInstance.validateConnection(result.issuer.CN, caList);
+        expect(status).toBeTruthy();
+    });
+    it("validate PZH Provider CA certificate", function() {
+        path =  require("fs").readFileSync(require("path").join(__dirname,"pzhp_ca.pem")).toString();
+        result =   CertificateManagerInstance.parseCert(path, "pem");
+        status = CertificateManagerInstance.validateConnection(result.issuer.CN, caList);
+        expect(status).toBeTruthy();
+    });
+    it("validate PZH WebSSL certificate", function() {
+        path =  require("fs").readFileSync(require("path").join(__dirname,"pzh_webssl.pem")).toString();
+        result =   CertificateManagerInstance.parseCert(path, "pem");
+        status = CertificateManagerInstance.validateConnection(result.issuer.CN, caList);
+        expect(status).toBeTruthy();
+    });
+    it("validate PZP CA certificate", function() {
+        path =  require("fs").readFileSync(require("path").join(__dirname,"pzp_ca.pem")).toString();
+        result =   CertificateManagerInstance.parseCert(path, "pem");
+        status = CertificateManagerInstance.validateConnection(result.issuer.CN, caList);
+        expect(status).toBeTruthy();
+    });
+    it("validate PZP CONN certificate", function() {
+        path =  require("fs").readFileSync(require("path").join(__dirname,"pzp_conn.pem")).toString();
+        result =   CertificateManagerInstance.parseCert(path, "pem");
+        status = CertificateManagerInstance.validateConnection(result.issuer.CN, caList);
+        expect(status).toBeTruthy();
+    });
+    it("negative test - check if verificatio fails if we do not have valid certificate", function(){
+        path =  require("fs").readFileSync(require("path").join(__dirname,"pzp_conn.pem")).toString();
+        result =   CertificateManagerInstance.parseCert(path, "pem");
+        var tmpList= [(require("fs").readFileSync(require("path").join(__dirname, "pzhp_ca.pem"))).toString()];
+        status = CertificateManagerInstance.validateConnection(result.issuer.CN, tmpList);
+        expect(status).toBeFalsy();
+    });
+});
