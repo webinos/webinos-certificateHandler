@@ -17,6 +17,8 @@
 * Copyright 2011 Habib Virji, Samsung Electronics (UK) Ltd
 * Copyright 2012 Ziran Sun, Samsung Electronics (UK) Ltd
 *******************************************************************************/
+
+#include <node.h>
 #include "openssl_wrapper.h"
 #include <openssl/rsa.h>
 #include <openssl/bio.h>
@@ -30,7 +32,6 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
-#include <v8.h>
 
 using namespace v8;
 /*
