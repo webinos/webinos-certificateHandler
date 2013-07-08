@@ -18,7 +18,6 @@
 * Copyright 2012 Ziran Sun, Samsung Electronics (UK) Ltd
 *******************************************************************************/
 
-#include <v8.h>
 #include <node.h>
 #include <stdio.h>
 #include <stdlib.h>
