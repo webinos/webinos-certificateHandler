@@ -283,6 +283,11 @@ describe("validate certificate based on CAList", function() {
         status = CertificateManagerInstance.validateConnection(result.issuer.CN, caList);
         expect(status).toBeTruthy();
     });
+    it("validate PZP CONN certificate chain with length one", function() {
+        var path =  require("fs").readFileSync(require("path").join(__dirname,"pzp_conn.pem")).toString();
+        status = CertificateManagerInstance.validateCertificateChain([path], caList);
+        expect(status).toBeTruthy();
+    });
     it("negative test - check if verificatio fails if we do not have valid certificate", function(){
         path =  require("fs").readFileSync(require("path").join(__dirname,"pzp_conn.pem")).toString();
         result =   CertificateManagerInstance.parseCert(path, "pem");
