@@ -11,8 +11,8 @@
   , "url" : "https://github.com/webinos/webinos-certificateHandler.git"
   }
 , "dependencies" :
-  { "webinos-keyStorage" : "git://github.com/webinos/webinos-keyStorage.git", 
-    "webinos-utilities"  : "git://github.com/webinos/webinos-utilities.git"
+  { "webinos-keyStorage" : "git://github.com/webinos/webinos-keyStorage", 
+    "webinos-utilities"  : "git://github.com/webinos/webinos-utilities"
   }
 , "devDependencies" : {
     "jasmine-node": "~1.7.0"
