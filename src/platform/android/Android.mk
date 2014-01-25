@@ -26,8 +26,9 @@ LOCAL_C_INCLUDES := $(NODE_ROOT)/src \
 	$(NODE_ROOT)/deps/v8/include \
 	$(NODE_ROOT)/deps/uv/include \
 	$(OSSL_ANDROID_ROOT)/include \
+	../../dcrypt \
 #	/home/vito/AndroidDevelopment/anode/openssl-android/include \
-	../../
+	../.. \
 
 # Add any additional required shared libraries that the addon depends on.
 LOCAL_LDLIBS := \
@@ -41,6 +42,9 @@ LOCAL_CPP_EXTENSION := .cc .cpp
 LOCAL_SRC_FILES :=\
 	../../certificate_manager.cpp \
         ../../openssl_wrapper.cpp \
+           ../../dcrypt/common.cc \
+           ../../dcrypt/verify.cc \
+../../dcrypt/nodeHiddenExports.cpp \
 
 
 
