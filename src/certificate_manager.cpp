@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "openssl_wrapper.h"
+#include "verify.h"
 #include <string.h>
 
 using namespace node;
@@ -329,6 +330,7 @@ extern "C" {
     NODE_SET_METHOD(target,"parseCert",_parseCert);
     NODE_SET_METHOD(target,"parseCrl",_parseCrl);
     NODE_SET_METHOD(target,"verifyCertificate",_verifyCertificate);
+    Verify::Initialize(target);
   }
   NODE_MODULE(certificate_manager,init);
 }
