@@ -20,4 +20,6 @@
   #define vsnprintf _vsnprintf 
   #define strcasecmp _stricmp 
   #define strncasecmp _strnicmp  
+#elif !defined(ANDROID)
+  #include <strings.h>
 #endif
