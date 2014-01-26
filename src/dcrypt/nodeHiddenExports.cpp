@@ -36,12 +36,6 @@ enum encoding nodeHiddenExports::ParseEncoding(Handle<Value> encoding_v) {
 	else if (strcasecmp(*encoding, "binary") == 0) {
 		return BINARY;
 	}
-#if !defined(ANDROID)
-    // Anode doesn't have this value
-	else if (strcasecmp(*encoding, "buffer") == 0) {
-		return BUFFER;
-	}
-#endif
 	else if (strcasecmp(*encoding, "hex") == 0) {
 		return HEX;
 	}
