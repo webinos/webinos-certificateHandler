@@ -35,7 +35,7 @@
         }],
       ],  
     },
-    {
+   {
     'target_name': 'webinos_wrt',
     'type': 'none',
     'toolsets': ['host'],
